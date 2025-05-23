@@ -1,0 +1,12 @@
+__pycache__/
+processed
+outputs_v2
+trash
+examples*
+.env
+build
+*.egg-info/
+*.zip
+venv
+test.py
+resources
