@@ -1,6 +1,13 @@
 import sys
+import nltk
 
-# Mock MeCab before any imports
+# Download NLTK resource for English POS tagging
+try:
+    nltk.download('averaged_perceptron_tagger_eng', quiet=True)
+except Exception as e:
+    print(f"Failed to download NLTK averaged_perceptron_tagger_eng: {str(e)}")
+
+# Mock MeCab before any imports to avoid Japanese processing errors
 class MockMeCab:
     class Tagger:
         def __init__(self, *args, **kwargs):
@@ -201,5 +208,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-    
