@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Cloning Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f5f6f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        #audioWaveform {
+            width: 100%;
+            height: 80px;
+            background-color: #e9ecef;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .btn-record {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .status {
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .btn {
+            transition: all 0.2s;
+        }
+        textarea, input[type="file"] {
+            border-radius: 8px;
+        }
+        #resultContainer {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Voice Cloning</h1>
+        
+        <div class="section">
+            <h4>Record or Upload Voice</h4>
+            <div class="mb-3">
+                <input class="form-control" type="file" id="voiceUpload" accept=".wav,audio/*">
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button id="recordBtn" class="btn btn-danger btn-record">
+                    <i class="bi bi-mic"></i>
+                </button>
+                <button id="uploadBtn" class="btn btn-primary">Upload</button>
+            </div>
+            <div id="waveformContainer" style="display: none;">
+                <div id="audioWaveform"></div>
+                <audio id="audioPreview" controls style="width: 100%;"></audio>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h4>Generate Cloned Voice</h4>
+            <div class="mb-3">
+                <textarea class="form-control" id="textInput" rows="2" placeholder="Enter text to speak">Hello, this is a voice cloning demo.</textarea>
+            </div>
+            <div class="mb-3">
+                <label for="speedInput" class="form-label">Speech Speed: <span id="speedValue">1.0</span>x</label>
+                <input type="range" class="form-range" min="0.5" max="2.0" step="0.1" value="1.0" id="speedInput">
+            </div>
+            <button id="generateBtn" class="btn btn-success w-100">Generate Voice</button>
+        </div>
+        
+        <div id="resultContainer" style="display: none;" class="section">
+            <h4>Result</h4>
+            <audio id="resultAudio" controls style="width: 100%;"></audio>
+            <button id="downloadBtn" class="btn btn-outline-primary mt-2">Download Audio</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/recordrtc@5.6.2/RecordRTC.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
