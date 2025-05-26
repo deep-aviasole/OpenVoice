@@ -28,6 +28,7 @@ import time
 from io import BytesIO
 import soundfile as sf
 import librosa
+import tempfile
 
 # Set page configuration
 st.set_page_config(page_title="Voice Cloning App", layout="wide")
@@ -54,7 +55,6 @@ def load_tone_color_converter(_device):
 @st.cache_resource
 def load_tts_model(_language, _device):
     try:
-        st.write(f"Loading TTS model for language: {_language}")
         model = TTS(language=_language, device=_device)
         return model
     except Exception as e:
@@ -69,15 +69,23 @@ def load_source_se(_path, _device):
         st.error(f"Failed to load source speaker embedding: {str(e)}")
         raise
 
-def save_audio_to_wav(audio_data, output_path, sample_rate=16000):
-    """Save audio data to WAV file."""
+def process_audio_to_wav(audio_data, sample_rate=16000):
+    """Process audio data to WAV format in memory."""
     try:
         if isinstance(audio_data, BytesIO):
             audio_data.seek(0)
         audio, sr = librosa.load(audio_data, sr=sample_rate, mono=True)
-        sf.write(output_path, audio, sr, format='WAV')
+        if len(audio) == 0:
+            raise ValueError("Audio data is empty or invalid")
+        output_buffer = BytesIO()
+        sf.write(output_buffer, audio, sr, format='WAV')
+        output_buffer.seek(0)
+        return output_buffer
+    except (librosa.util.exceptions.ParameterError, soundfile.LibsndfileError) as e:
+        st.error(f"Audio processing failed (format or data issue): {str(e)}")
+        raise
     except Exception as e:
-        st.error(f"Failed to save audio: {str(e)}")
+        st.error(f"Unexpected error processing audio: {str(e)}")
         raise
 
 def main():
@@ -85,15 +93,7 @@ def main():
     st.markdown("Record your voice and generate cloned speech with custom text.")
 
     # Settings
-    output_dir = 'outputs_v2'
-    src_path = f'{output_dir}/tmp.wav'
-    save_path = f'{output_dir}/output_v2_en_india.wav'
-    reference_path = f'{output_dir}/reference.wav'
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    st.write(f"Using device: {device}")
-
-    # Ensure output directory exists
-    os.makedirs(output_dir, exist_ok=True)
 
     # Load models and resources
     try:
@@ -121,8 +121,8 @@ def main():
     if audio_value and st.session_state.recorded_audio is None:
         try:
             st.session_state.recorded_audio = audio_value
-            with st.spinner("Saving recorded audio..."):
-                save_audio_to_wav(audio_value, reference_path)
+            with st.spinner("Processing recorded audio..."):
+                st.session_state.recorded_audio = process_audio_to_wav(audio_value)
                 st.success("Audio recorded successfully!")
         except Exception as e:
             st.warning(f"Error processing audio: {str(e)}")
@@ -130,21 +130,27 @@ def main():
 
     # Extract speaker embedding
     if st.session_state.recorded_audio and st.session_state.target_se is None:
-        if os.path.exists(reference_path):
-            with st.spinner("Extracting speaker embedding..."):
-                try:
-                    st.session_state.target_se, _ = se_extractor.get_se(reference_path, tone_color_converter, vad=True)
-                    torch.save(st.session_state.target_se, "cached_se.pt")
-                    st.success("Speaker embedding extracted successfully!")
-                except Exception as e:
-                    st.error(f"Failed to extract speaker embedding: {str(e)}")
-        elif os.path.exists("cached_se.pt"):
-            with st.spinner("Loading cached speaker embedding..."):
-                try:
-                    st.session_state.target_se = torch.load("cached_se.pt", map_location=device)
-                    st.success("Cached speaker embedding loaded!")
-                except Exception as e:
-                    st.error(f"Failed to load cached speaker embedding: {str(e)}")
+        with st.spinner("Extracting speaker embedding..."):
+            temp_file_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_file:
+                    temp_file.write(st.session_state.recorded_audio.getvalue())
+                    temp_file_path = temp_file.name
+                st.session_state.target_se, _ = se_extractor.get_se(temp_file_path, tone_color_converter, vad=True)
+                st.success("Speaker embedding extracted successfully!")
+            except (IOError, soundfile.LibsndfileError) as e:
+                st.error(f"Failed to read/write temporary file for embedding: {str(e)}")
+                return
+            except Exception as e:
+                st.error(f"Unexpected error extracting speaker embedding: {str(e)}")
+                return
+            finally:
+                if temp_file_path and os.path.exists(temp_file_path):
+                    try:
+                        # os.remove(temp_file_path)  # Uncomment for production
+                        pass
+                    except Exception as e:
+                        st.warning(f"Failed to clean up temporary file: {str(e)}")
 
     # Text and speed inputs
     st.header("Text and Speed")
@@ -169,34 +175,67 @@ def main():
                 return
             speaker_id = speaker_ids[speaker_key]
 
-            # Generate intermediate audio
+            # Generate intermediate audio in memory
             progress_bar.progress(0.4, "Generating base audio...")
             t1 = time.time()
-            tts_model.tts_to_file(text_input, speaker_id, src_path, speed=speed)
+            src_path = None
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_src:
+                tts_model.tts_to_file(text_input, speaker_id, temp_src.name, speed=speed)
+                temp_src.seek(0)
+                src_audio = BytesIO(temp_src.read())
+                src_path = temp_src.name
+            # os.remove(src_path)  # Uncomment for production
             st.write(f"TTS generation time: {time.time() - t1:.2f} seconds")
 
-            # Convert tone color
+            # Convert tone color in memory
             progress_bar.progress(0.8, "Applying voice cloning...")
             t2 = time.time()
-            tone_color_converter.convert(
-                audio_src_path=src_path,
-                src_se=source_se,
-                tgt_se=st.session_state.target_se,
-                output_path=save_path,
-                message="@MyShell"
-            )
+            out_path = None
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_out:
+                tone_color_converter.convert(
+                    audio_src_path=src_path,
+                    src_se=source_se,
+                    tgt_se=st.session_state.target_se,
+                    output_path=temp_out.name,
+                    message="@MyShell"
+                )
+                temp_out.seek(0)
+                output_audio = BytesIO(temp_out.read())
+                out_path = temp_out.name
+            # os.remove(src_path)  # Uncomment for production
+            # os.remove(out_path)  # Uncomment for production
             st.write(f"Tone conversion time: {time.time() - t2:.2f} seconds")
 
             progress_bar.progress(1.0, "Complete!")
             st.subheader("Generated Cloned Voice")
-            st.audio(save_path, format="audio/wav")
+            output_audio.seek(0)
+            st.audio(output_audio, format="audio/wav")
+            output_audio.seek(0)
+            st.download_button(
+                label="Download Cloned Audio",
+                data=output_audio,
+                file_name="cloned_voice.wav",
+                mime="audio/wav"
+            )
             st.success(f"Voice cloned audio generated in {time.time() - start_time:.2f} seconds!")
 
+        except (librosa.util.exceptions.ParameterError, soundfile.LibsndfileError) as e:
+            st.error(f"Audio processing error (format or data issue): {str(e)}")
+        except IOError as e:
+            st.error(f"File I/O error during generation: {str(e)}")
         except Exception as e:
-            st.error(f"Error during generation: {str(e)}")
+            st.error(f"Unexpected error during generation: {str(e)}")
         finally:
             st.session_state.processing = False
             progress_bar.empty()
+            # Cleanup temporary files if they exist
+            for path in [locals().get('src_path'), locals().get('out_path')]:
+                if path and os.path.exists(path):
+                    try:
+                        # os.remove(path)  # Uncomment for production
+                        pass
+                    except Exception as e:
+                        st.warning(f"Failed to clean up temporary file: {str(e)}")
 
     elif generate_button:
         if not st.session_state.recorded_audio:
