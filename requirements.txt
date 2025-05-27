@@ -4,25 +4,10 @@ pydantic
 soundfile
 librosa
 nltk
-torch
+torch==2.2.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
 jinja2
 python-multipart
 starlette
-numpy
-scipy
-audioread
-six
-joblib
-regex
-click
-typing-extensions
 
-# For MeloTTS (based on likely dependencies)
-transformers
-huggingface_hub
-scikit-learn
-tqdm
-onnxruntime
-
-# MeloTTS from GitHub
+# MeloTTS via GitHub
 melotts @ git+https://github.com/myshell-ai/MeloTTS.git@209145371cff8fc3bd60d7be902ea69cbdb7965a
