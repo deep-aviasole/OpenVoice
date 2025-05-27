@@ -1,13 +1,11 @@
+melotts @ git+https://github.com/myshell-ai/MeloTTS.git@209145371cff8fc3bd60d7be902ea69cbdb7965a
 fastapi
 uvicorn
 pydantic
 soundfile
 librosa
 nltk
-torch-cpu
+torch
 jinja2
 python-multipart
 starlette
-
-# MeloTTS via GitHub
-melotts @ git+https://github.com/myshell-ai/MeloTTS.git@209145371cff8fc3bd60d7be902ea69cbdb7965a
