@@ -1,18 +1,28 @@
-librosa
-faster-whisper
-pydub
-wavmark
-numpy
-eng_to_ipa
-inflect
-unidecode
-whisper-timestamped
-openai
-python-dotenv
-pypinyin
-cn2an
-jieba
-langid
-uvicorn
-nltk
 fastapi
+uvicorn
+pydantic
+soundfile
+librosa
+nltk
+torch
+jinja2
+python-multipart
+starlette
+numpy
+scipy
+audioread
+six
+joblib
+regex
+click
+typing-extensions
+
+# For MeloTTS (based on likely dependencies)
+transformers
+huggingface_hub
+scikit-learn
+tqdm
+onnxruntime
+
+# MeloTTS from GitHub
+melotts @ git+https://github.com/myshell-ai/MeloTTS.git@209145371cff8fc3bd60d7be902ea69cbdb7965a
