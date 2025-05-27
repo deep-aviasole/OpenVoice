@@ -4,7 +4,7 @@ pydantic
 soundfile
 librosa
 nltk
-torch==2.2.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
+torch-cpu
 jinja2
 python-multipart
 starlette
