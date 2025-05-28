@@ -105,7 +105,7 @@ pydantic-core==2.33.2
 pydub==0.25.1
 pygments==2.19.1
 pykakasi==2.2.1
-pypinyin==0.53.0
+pypinyin==0.50.0
 pyreadline3==3.5.4
 python-crfsuite==0.9.11
 python-dateutil==2.9.0.post0
